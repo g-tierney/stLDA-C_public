@@ -1,0 +1,122 @@
+
+library(topicmodels)
+library(tidytext)
+library(tidyverse)
+
+source("scripts/setup.R")
+source("scripts/helper_functions.R")
+source("scripts/gibbs_functions.R")
+
+### generate topic distributions ### 
+
+nT <- 10
+corp_news <- quanteda.corpora::download('data_corpus_guardian')
+dfmat_news <- dfm(corp_news, remove_punct = TRUE, remove = stopwords('en')) %>% 
+  dfm_remove(c('*-time', '*-timeUpdated', 'GMT', 'BST')) %>% 
+  dfm_trim(min_termfreq = 0.95, termfreq_type = "quantile", 
+           max_docfreq = 0.1, docfreq_type = "prop")
+
+dfmat_news <- dfmat_news[ntoken(dfmat_news) > 0,]
+dtm <- convert(dfmat_news, to = "topicmodels")
+lda <- LDA(dtm, k = 10,control = list(seed = 196))
+
+nT <- lda@k
+
+topics <- tidy(lda,matrix = "beta")
+
+topics_tw <- topics %>% 
+  group_by(topic) %>% 
+  spread(key = topic,value = beta) 
+
+words <- topics_tw$term
+tw_true <- topics_tw[,2:(nT+1)] %>% t
+
+
+### Generate clusters ###
+nC <- 4
+nUC <- 10
+nU <- nUC*nC
+nW <- ncol(tw_true)
+
+set.seed(196) 
+
+alpha_true <- matrix(c(1,1,1,1,1,1,1,1,1,1,
+                       1,1,1,1,1,0,0,0,0,0,
+                       0,0,0,0,0,1,1,1,1,1,
+                       0,1,1,1,1,0,0,0,0,0
+),nrow = nC,byrow = T)
+
+alpha_true <- alpha_true %>% 
+  {./rowSums(.)*100}
+
+#to generate data with a single cluster, uncomment
+#alpha_true <- matrix(1,nrow = nC,ncol = nT)
+
+ca_true <- rep(1:nC,times = nUC) %>% sort
+ut_true <- sapply(ca_true,function(c) rgamma(n = nT,shape = alpha_true[c,],rate = 1) %>% {./sum(.)}) %>% t
+
+nDperU <- 100
+users <- lapply(1:nU,function(u) rep(u,nDperU)) %>% unlist
+ta_true <- lapply(users,function(u) sample(1:nT,size=1,prob = ut_true[u,])) %>% unlist
+
+dw <- sapply(ta_true,function(t) rmultinom(n=1,size = 13,prob = tw_true[t,])) %>% t
+ut_true_counts <- sapply(1:nU,function(u) sapply(1:nT,function(t) sum(ta_true == t & users ==u))) %>% t 
+
+
+# #simulated according to cLDA
+# set.seed(196)
+# alpha_true <- matrix(c(1,1,1,1,1,1,1,1,1,1,
+#                        1,1,1,1,1,0,0,0,0,0,
+#                        0,0,0,0,0,1,1,1,1,1,
+#                        0,1,1,1,1,0,0,0,0,0
+# ),nrow = nC,byrow = T)
+# 
+# alpha_true <- alpha_true %>% 
+#   {./rowSums(.)*100}
+# 
+# ca_true <- rep(1:nC,times = nUC) %>% sort
+# ut_true <- sapply(ca_true,function(c) rgamma(n = nT,shape = alpha_true[c,],rate = 1) %>% {./sum(.)}) %>% t
+# 
+# nDperU <- 100
+# users <- lapply(1:nU,function(u) rep(u,nDperU)) %>% unlist
+# 
+# ta_sim <- sapply(users,function(u){
+#   topics <- sample(1:nT,size=13,replace=T,prob = ut_true[u,])
+#   topics_vec <- rep(0,nT)
+#   for(t in topics){
+#     topics_vec[t] <- topics_vec[t] + 1
+#   }
+#   topics_vec
+# }) %>% t
+# ta_true <- apply(ta_sim,1,which.max)
+# dw <- sapply(1:nrow(ta_sim),function(d){
+#   topics <- rep(1:nT,times = ta_sim[d,])
+#   words <- sapply(topics,function(t) sample(1:nW,size=1,prob = tw_true[t,]))
+#   words_vec <- rep(0,nW)
+#   for(w in words){
+#     words_vec[w] <- words_vec[w] + 1
+#   }
+#   words_vec
+# }) %>% t
+
+#sample stLDA-C, see gibbs_functions.R for documentation and parameter descriptions
+groundtruth_estimate <- collapsed_gibbs_1topic_clusters(alpha = 1,eta = .1,nu = 1,
+                                                        users = users,dw = dw,
+                                                        nT = nT,nC = nC,
+                                                        niter = 100,
+                                                        seed = 196,mcmc_update = T,
+                                                        nalphag_steps = 100,
+                                                        mu_scale = 0,sigma_scale = 100,
+                                                        prop_scale_center = 100,alphag_sample_method = "componentwise",
+                                                        print_clusters = T)
+#sample stLDA, see gibbs_functions.R for documentation and parameter descriptions
+groundtruth_estimate_nocluster <- collapsed_gibbs_1topic(alpha = 1,eta = .1,
+                                                         users = users,dw = dw,
+                                                         nT = nT,
+                                                         niter = 100,
+                                                         seed = 555)
+
+#save resultts
+#save(groundtruth_estimate,users,dw,ta_true,ca_true,tw_true,words,file = "output/clda_sims/set1_cldac.Rdata")
+#save(groundtruth_estimate_nocluster,users,dw,ta_true,ca_true,tw_true,words,file = "output/clda_sims/set1_clda_100runs.Rdata")
+
