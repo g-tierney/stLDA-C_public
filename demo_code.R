@@ -111,13 +111,49 @@ groundtruth_estimate <- collapsed_gibbs_1topic_clusters(alpha = 1,eta = .1,nu = 
                                                         prop_scale_center = 100,alphag_sample_method = "componentwise",
                                                         print_clusters = T)
 #sample stLDA, see gibbs_functions.R for documentation and parameter descriptions
-groundtruth_estimate_nocluster <- collapsed_gibbs_1topic(alpha = 1,eta = .1,
-                                                         users = users,dw = dw,
-                                                         nT = nT,
-                                                         niter = 100,
-                                                         seed = 555)
+# groundtruth_estimate_nocluster <- collapsed_gibbs_1topic(alpha = 1,eta = .1,
+#                                                          users = users,dw = dw,
+#                                                          nT = nT,
+#                                                          niter = 100,
+#                                                          seed = 555)
 
 #save resultts
 #save(groundtruth_estimate,users,dw,ta_true,ca_true,tw_true,words,file = "output/clda_sims/set1_cldac.Rdata")
 #save(groundtruth_estimate_nocluster,users,dw,ta_true,ca_true,tw_true,words,file = "output/clda_sims/set1_clda_100runs.Rdata")
+
+#######################
+### Visualizations ####
+#######################
+
+#print top 5 words from each topic
+groundtruth_estimate[["tw"]] %>% 
+  top_topic_words(words = words,n=10) %>% 
+  t
+
+#print cluster means with user-level topic estimates overlayed
+
+plot_clusters <- function(ut_mat,cluster_assignment,cluster_alphas,yRange = c(0,.5)){
+  cluster_means <- cluster_alphas %>% {./rowSums(.)}
+  ut_mat <- ut_mat %>% {./rowSums(.)}
+  
+  lapply(unique(cluster_assignment),function(c){
+    ut_mat %>% 
+    {.[cluster_assignment == c,]} %>% 
+      t %>% 
+      data.frame(Topic = 1:ncol(ut_mat),.) %>% 
+      reshape2::melt(id.vars = "Topic") %>% 
+      ggplot(aes(x=Topic,y=value)) + 
+      geom_line(aes(color=variable)) + 
+      guides(color = "none") + 
+      geom_bar(data = data.frame(x=1:ncol(ut_mat),y=cluster_means[c,]),aes(x=x,y=y),alpha=.5,stat = "identity") + 
+      labs(title = str_c("Cluster ",c," (n=",sum(cluster_assignment == c),")"),y="Probability") + 
+      ylim(yRange)
+  })
+}
+
+clusterPlots <- plot_clusters(ut_mat = groundtruth_estimate[["ut"]] %>% results_array_mean(),
+                                 cluster_assignment = groundtruth_estimate[["ca"]] %>% results_freq_table() %>% apply(1,which.max),
+                                 cluster_alphas = groundtruth_estimate[["alphag"]] %>% results_array_mean())
+
+clusterPlots %>% gridExtra::grid.arrange(grobs = .)
 
