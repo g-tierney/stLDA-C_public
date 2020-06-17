@@ -118,14 +118,14 @@ collapsed_gibbs_1topic <- function(alpha=1,eta=1,
 #' @param eta the prior for the topic-word probability vector beta (default set to 1)
 #' @param users a vector of the users (authors) of each document
 #' @param dw a document-word matrix of counts
-#' @param nT the desired number of topics, defaults to 2
-#' @param nC the desired number of user clusters, defaults to 2
+#' @param nT the desired number of topics
+#' @param nC the desired number of user clusters
 #' @param niter the number of Gibbs itterations
 #' @param nthin save Gibbs output every nthin iterations (defaults to 1)
 #' @param nburnin number of iterations to go through before saving results (defaults to 0)
 #' @param nupdate print iteration step every nupdate iterations (defaults to 10 prints)
 #' @param seed Seed for randomization (optional)
-#' @param mcmc_update Option to update alphag parameters with an MCMC step (T) or with the MAP estimate (F)
+#' @param mcmc_update Method to update alphag parameters 
 #' @param nalphag_steps Number of updates to cluster-level paramters to compute between iterations through the corpus
 #' @param mu_scale mean for half-normal prior on the scale/precision of each alphag Dirichlet parameters
 #' @param sigma_scale standard deviation for half-normal prior on the scale/precision of each alphag Dirichelt parameters  
@@ -140,7 +140,7 @@ collapsed_gibbs_1topic_clusters <- function(alpha=1,eta=1,nu=1,
                                             nalphag_steps = 100,
                                             mu_scale = 100,sigma_scale = 50,
                                             prop_scale_center = 100,
-                                            alphag_sample_method = c("map_guess","current_center","componentwise")[1],
+                                            alphag_sample_method = c("map_guess","current_center","componentwise")[3],
                                             print_clusters = F){
   
   
