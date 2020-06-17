@@ -131,6 +131,8 @@ groundtruth_estimate[["tw"]] %>%
   t
 
 #print cluster means with user-level topic estimates overlayed
+#grey bars are cluster-level expected values, colored lines are each user's topic distribution
+#note that clusters with 1 user do not visualize well
 
 plot_clusters <- function(ut_mat,cluster_assignment,cluster_alphas,yRange = c(0,.5)){
   cluster_means <- cluster_alphas %>% {./rowSums(.)}
