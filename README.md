@@ -1,6 +1,6 @@
 # stLDA-C
 
-Single topic LDA with clustering. Implementation for stLDA-C, developed to model Twitter posts and cluster users. This repository implements the method described in a (soon-to-be-released) paper by Tierney, Bail, and Volfovsky.
+Single topic LDA with clustering. Implementation for stLDA-C, developed to model Twitter posts and cluster users. This repository implements the method described in Author Clustering and Topic Estimation for Short Texts by Tierney, Bail, and Volfovsky: https://arxiv.org/abs/2106.09533.
 
 The primary use-case for this model is when you have many short texts (posts) from a large number of users, and you want to cluster both the texts and users simultaneously. The model extends the basic LDA framework in Blei, Ng, and Jordan (2003). Each post is a multinomial draw over all words with a single latent topic distribution identifying word frequencies. Users post about topics at different rates, modeled by a latent, Dirichlet-distributed random variable. Each user’s latent topic frequencies are drawn from a cluster-specific Dirichlet. 
 
